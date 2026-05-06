@@ -38,6 +38,10 @@ if !exists('g:claude_restrict_filesystem')
   let g:claude_restrict_filesystem = 1
 endif
 
+if !exists('g:claude_user_instructions')
+  let g:claude_user_instructions = ''
+endif
+
 if !exists('g:claude_map_implement')
   let g:claude_map_implement = '<leader>ci'
 endif
@@ -975,7 +979,11 @@ function! s:SendChatMessage(prefix)
     let l:restricted = ['open', 'new', 'shell', 'python']
     let l:tools = filter(copy(l:tools), 'index(l:restricted, v:val.name) == -1')
   endif
-  let l:job = s:ClaudeQueryInternal(l:messages, l:content_prompt . l:system_prompt, l:tools, function('s:StreamingChatResponse'), function('s:FinalChatResponse'))
+  let l:system = l:content_prompt . l:system_prompt
+  if !empty(g:claude_user_instructions)
+    let l:system = l:system . "\n\n# User Preferences\n\n" . g:claude_user_instructions
+  endif
+  let l:job = s:ClaudeQueryInternal(l:messages, l:system, l:tools, function('s:StreamingChatResponse'), function('s:FinalChatResponse'))
 
   " Store the job ID or channel for potential cancellation
   if has('nvim')
