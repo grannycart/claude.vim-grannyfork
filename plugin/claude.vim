@@ -470,7 +470,7 @@ function! s:ExecuteTool(tool_name, arguments)
     return s:ExecuteOpenWebTool(a:arguments.url)
   elseif a:tool_name == 'web_search'
     let l:escaped_query = py3eval("''.join([c if c.isalnum() or c in '-._~' else '%{:02X}'.format(ord(c)) for c in vim.eval('a:arguments.query')])")
-    return s:ExecuteOpenWebTool("https://www.google.com/search?q=" . l:escaped_query)
+    return s:ExecuteOpenWebTool("https://lite.duckduckgo.com/lite/?q=" . l:escaped_query)
   else
     return 'Error: Unknown tool ' . a:tool_name
   endif
