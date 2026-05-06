@@ -539,6 +539,12 @@ function! s:ExecuteNewTool(path)
 endfunction
 
 function! s:ExecuteOpenWebTool(url)
+  redraw
+  let l:confirm = input("Fetch this URL? " . a:url . "\n(y/n/C-C; if you C-C to stop now, you can C-] later to resume) ")
+  if l:confirm !~? '^y'
+    return "Web fetch cancelled by user."
+  endif
+
   let l:current_winid = win_getid()
 
   topleft 1new
