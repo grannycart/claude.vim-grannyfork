@@ -180,3 +180,86 @@ redact the history (or just delete it).
 content of all buffers is sent.  This can consume tokens FAST.  (Even if it
 is not too expensive, remember that Claude also imposes a total daily token
 limit.) Prune your chat history regularly.**
+
+## Changes in this fork
+
+This fork updates and extends the upstream `pasky/claude.vim` (which is no longer maintained). The following changes have been made:
+
+### Updated default model
+
+The default model is `claude-sonnet-4-6`. The upstream defaults used old date-suffixed model IDs that no longer work. You can override in your `.vimrc`:
+
+```vim
+let g:claude_model = 'claude-opus-4-7'
+```
+
+### Vimdiff multi-hunk fix
+
+The upstream plugin only applied the first code change when Claude proposed multiple changes to a file in a single response. This is fixed — all hunks now appear correctly in the vimdiff review.
+
+### Filesystem tool restrictions
+
+By default, the four tools that can read or write the local filesystem (`open`, `new`, `shell`, `python`) are removed from the tool list before every API call. Claude can only work with the buffers you have explicitly opened in Vim. The workflow thinking is: "I can open my own damn files, thank you very much. And I'll write my files from my vim buffers when I am good and ready. I am capable of typing `:w` and I don't need a robot to do it for me." 
+
+No filesystem access was made the default also with an eye toward basic secuity principles. Claude Code asks permission to work in a project directory and then writes outside the boundary (in .claude/ with memory and plans) without asking --- a violation of the principle of least privilege. Even though this is probably benign in Claude Code, the principle seems just wrong for the security minded.
+
+To re-enable filesystem tools for a project, add to your `.vimrc`:
+
+```vim
+let g:claude_restrict_filesystem = 0
+```
+
+When enabled, `shell` and `python` still require per-execution confirmation (unchanged from upstream). The `open` and `new` tools do not prompt — use with care.
+
+### Extended thinking
+
+Claude can be asked to reason through problems before responding. The reasoning ("thinking") is displayed in the chat buffer as a collapsed fold so it's accessible but out of the way. Use `zo` on the fold to expand it.
+
+To enable, set a token budget in your `.vimrc`:
+
+```vim
+let g:claude_thinking_budget = 8000
+```
+
+The budget controls the maximum number of tokens Claude may spend on internal reasoning before producing its reply. Higher values allow more thorough reasoning but increase response time and cost (thinking tokens are billed at output rates). 5000–10000 is a reasonable range for most tasks. Set to 0 (the default) to disable thinking entirely.
+
+### Web search: DuckDuckGo and confirmation prompts
+
+Web search now uses DuckDuckGo Lite instead of Google. Google blocks elinks (the text browser used for web access), making Google search unreliable. DuckDuckGo Lite is a plain HTML page that works correctly with elinks — no JavaScript, no consent walls.
+
+The search URL is set in `s:ExecuteTool` in `plugin/claude.vim`. To switch back to Google (e.g. after manually accepting cookie consent in elinks):
+
+```vim
+" In plugin/claude.vim, find this line and change the URL:
+return s:ExecuteOpenWebTool("https://lite.duckduckgo.com/lite/?q=" . l:escaped_query)
+" Replace with:
+return s:ExecuteOpenWebTool("https://www.google.com/search?q=" . l:escaped_query)
+```
+
+All web fetches (both `web_search` and direct `open_web` tool calls) now require per-request confirmation. You will be shown the URL and asked to confirm before anything is fetched. This protects against prompt injection attacks where a malicious page could instruct Claude to silently exfiltrate your open buffer contents via a crafted URL.
+
+To use web search, install `elinks` or `felinks`:
+
+```
+# Fedora/RHEL
+sudo dnf install elinks
+
+# Debian/Ubuntu
+sudo apt install elinks
+
+# macOS
+brew install felinks
+```
+
+### Per-session user instructions
+
+You can inject arbitrary additional instructions into the system prompt on every API call. Useful for personality tweaks, workflow preferences, or project-specific rules:
+
+```vim
+let g:claude_user_instructions = "Be extremely terse. Always explain your reasoning before showing code."
+```
+
+The instructions are appended to the system prompt under a `# User Preferences` heading. They apply to every chat message in the session.
+
+
+
