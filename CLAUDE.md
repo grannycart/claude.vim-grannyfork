@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Fork Status
 
-This is a fork of the unmaintained upstream repo `pasky/claude.vim`. Active development is ongoing. The plan for current work is at `/home/dynohub/.claude/plans/binary-mixing-fairy.md` — read it before making changes. **Nothing in the plan has been implemented yet as of the last session.**
+This is a fork of the unmaintained upstream repo `pasky/claude.vim`. Active development is ongoing. The plan for current work is at `~/.claude/plans/binary-mixing-fairy.md` — read it before making changes.
+
+Completed: Steps 1 (model IDs) and 2 (vimdiff multi-hunk `<Esc>` fix). Step 3 (`g:claude_restrict_filesystem`) is implemented but untested. Steps 4–6 are pending.
 
 The owner's design philosophy: Claude should only access what the user explicitly provides; all code changes must go through vimdiff review; Claude should never write directly to the filesystem. When in doubt, defer to the plan.
 
@@ -38,7 +40,7 @@ All core logic lives in `plugin/claude.vim` (~1200 lines of VimScript).
 
 **Chat mode** (`s:OpenClaudeChat`): manages a persistent `__claude__` buffer. Every request includes all open Vim buffers (`:buffers`) — token usage grows with open buffers.
 
-**Tool execution** (`g:claude_tools`): inline tools — `python`, `shell`, `open`, `new`, `open_web` — run during a response and feed results back into the conversation automatically.
+**Tool execution** (`g:claude_tools`): inline tools — `python`, `shell`, `open`, `new`, `open_web`, `web_search` — run during a response and feed results back into the conversation automatically. `g:claude_restrict_filesystem` (default 1) strips `open`/`new`/`shell`/`python` from the list before each API call; set to 0 in `.vimrc` to re-enable.
 
 **Bedrock support**: `plugin/claude_bedrock_helper.py` translates between the Anthropic API format and the AWS Bedrock format; invoked as a subprocess when `g:claude_use_bedrock = 1`.
 
