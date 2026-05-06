@@ -134,8 +134,15 @@ function! s:ClaudeQueryInternal(messages, system_prompt, tools, stream_callback,
     if !empty(a:tools)
       let l:data['tools'] = a:tools
     endif
+    if g:claude_thinking_budget > 0
+      let l:data['thinking'] = {'type': 'enabled', 'budget_tokens': g:claude_thinking_budget}
+      let l:data['max_tokens'] = g:claude_thinking_budget + 2048
+    endif
     call extend(l:headers, ['-H', 'Content-Type: application/json'])
     call extend(l:headers, ['-H', 'x-api-key: ' . g:claude_api_key])
+    if g:claude_thinking_budget > 0
+      call extend(l:headers, ['-H', 'anthropic-beta: interleaved-thinking-2025-05-14'])
+    endif
     call extend(l:headers, ['-H', 'anthropic-version: 2023-06-01'])
 
     " Convert data to JSON
@@ -199,9 +206,15 @@ function! s:HandleStreamOutput(stream_callback, final_callback, channel, msg)
               \ 'name': l:response.content_block.name,
               \ 'input': ''
               \ }
+      elseif l:response.type == 'content_block_start' && l:response.content_block.type == 'thinking'
+        let s:current_thinking_block = ''
       elseif l:response.type == 'content_block_delta' && has_key(l:response.delta, 'type') && l:response.delta.type == 'input_json_delta'
         if exists('s:current_tool_call')
           let s:current_tool_call.input .= l:response.delta.partial_json
+        endif
+      elseif l:response.type == 'content_block_delta' && has_key(l:response.delta, 'type') && l:response.delta.type == 'thinking_delta'
+        if exists('s:current_thinking_block')
+          let s:current_thinking_block .= l:response.delta.thinking
         endif
       elseif l:response.type == 'content_block_stop'
         if exists('s:current_tool_call')
@@ -209,6 +222,10 @@ function! s:HandleStreamOutput(stream_callback, final_callback, channel, msg)
           " XXX this is a bit weird layering violation, we should probably call the callback instead
           call s:AppendToolUse(s:current_tool_call.id, s:current_tool_call.name, l:tool_input)
           unlet s:current_tool_call
+        endif
+        if exists('s:current_thinking_block')
+          call s:AppendThinkingBlock(s:current_thinking_block)
+          unlet s:current_thinking_block
         endif
       elseif has_key(l:response, 'delta') && has_key(l:response.delta, 'text')
         let l:delta = l:response.delta.text
@@ -721,6 +738,7 @@ function! s:SetupClaudeChatSyntax()
   syntax region claudeChatClaudeContent start=/^Claude.*:/ end=/^\S/me=s-1 contains=claudeChatClaude,@markdown,claudeChatCodeBlock
   syntax region claudeChatToolBlock start=/^Tool.*:/ end=/^\S/me=s-1 contains=claudeChatToolUse,claudeChatToolResult
   syntax region claudeChatCodeBlock start=/^\s*```/ end=/^\s*```/ contains=@NoSpell
+  syntax match claudeChatThinkingMark /^\s*```thinking/
 
   " Don't make everything a code block; FIXME this works satisfactorily
   " only for inline markdown pieces
@@ -732,6 +750,7 @@ function! s:SetupClaudeChatSyntax()
   highlight default link claudeChatClaude Keyword
   highlight default link claudeChatToolUse Keyword
   highlight default link claudeChatToolResult Keyword
+  highlight default link claudeChatThinkingMark Special
   highlight default link claudeChatToolBlock Comment
   highlight default link claudeChatCodeBlock Comment
 
@@ -963,6 +982,17 @@ command! ClaudeSend call <SID>SendChatMessage('Claude:')
 
 
 " ----- Handling responses: Tool use
+
+function! s:AppendThinkingBlock(content)
+  if bufname('%') !~# 'Claude Chat'
+    return
+  endif
+  let l:indent = s:GetClaudeIndent()
+  call append('$', l:indent . '```thinking')
+  call append('$', map(split(a:content, "\n"), {_, v -> l:indent . v}))
+  call append('$', l:indent . '```')
+  normal! G
+endfunction
 
 function! s:ResponseExtractToolUses(messages)
   if len(a:messages) == 0
