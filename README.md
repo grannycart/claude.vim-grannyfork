@@ -181,7 +181,23 @@ content of all buffers is sent.  This can consume tokens FAST.  (Even if it
 is not too expensive, remember that Claude also imposes a total daily token
 limit.) Prune your chat history regularly.**
 
+--------------------------------------------------------------------------------
 ## Changes in this fork
+
+_Why this fork? Don't we all use Claude Code now?_ While not denying the power of Claude Code CLI, on experimenting with it I found it extremely aggravating:
+* It feels abstracted from the code:
+    * It defaults to autonomously reading, changing, and writing code — it sometimes feels like it doesn't even _want_ the user to look at the code it is generating, just to approve a high-level plan.
+    * It moves too quickly: it is often on to the next step before you finish discussing the current one.
+    * The diffs are hard to read, especially compared to vimdiff.
+* Security is an afterthought:
+    * While it asks permission to work in the current directory, it silently creates a `.claude/` directory in your project and writes memory files there without announcing this on first use.
+* It isn't portable: those memory files live in a local `.claude/` directory. Clone the repo on another machine and the context you built up is gone — which feels antithetical to the distributed philosophy behind git.
+* It isn't a good fit for the kind of coding I do most often. I mostly write short bash, Python, or R scripts — under 100 lines. AI is extremely helpful here but still makes mistakes and needs adjustment mid-stream. On top of that, I often work on sensitive systems where allowing an AI to read and write the filesystem freely feels risky.
+
+The tool I want:
+* I open files myself. I don't need an AI to do that for me.
+* I can review code with the AI, and have it suggest changes in a vimdiff format.
+* I can save files myself. I don't see the need to allow an AI access to my filesystem at all.
 
 This fork updates and extends the upstream `pasky/claude.vim` (which is no longer maintained). The following changes have been made:
 
@@ -199,9 +215,7 @@ The upstream plugin only applied the first code change when Claude proposed mult
 
 ### Filesystem tool restrictions
 
-By default, the four tools that can read or write the local filesystem (`open`, `new`, `shell`, `python`) are removed from the tool list before every API call. Claude can only work with the buffers you have explicitly opened in Vim. The workflow thinking is: "I can open my own damn files, thank you very much. And I'll write my files from my vim buffers when I am good and ready. I am capable of typing `:w` and I don't need a robot to do it for me." 
-
-No filesystem access was made the default also with an eye toward basic secuity principles. Claude Code asks permission to work in a project directory and then writes outside the boundary (in .claude/ with memory and plans) without asking --- a violation of the principle of least privilege. Even though this is probably benign in Claude Code, the principle seems just wrong for the security minded.
+By default, the four tools that can read or write the local filesystem (`open`, `new`, `shell`, `python`) are removed from the tool list before every API call. Claude can only work with the buffers you have explicitly opened in Vim.
 
 To re-enable filesystem tools for a project, add to your `.vimrc`:
 
@@ -225,7 +239,7 @@ The budget controls the maximum number of tokens Claude may spend on internal re
 
 ### Web search: DuckDuckGo and confirmation prompts
 
-Web search now uses DuckDuckGo Lite instead of Google. Google blocks elinks (the text browser used for web access), making Google search unreliable. DuckDuckGo Lite is a plain HTML page that works correctly with elinks — no JavaScript, no consent walls.
+Web search now uses DuckDuckGo Lite instead of Google. Google blocks elinks (the text browser used for web access). DuckDuckGo Lite is plain HTML — no JavaScript, no consent walls.
 
 The search URL is set in `s:ExecuteTool` in `plugin/claude.vim`. To switch back to Google (e.g. after manually accepting cookie consent in elinks):
 
