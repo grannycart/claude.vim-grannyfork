@@ -11,7 +11,7 @@ if !exists('g:claude_api_url')
 endif
 
 if !exists('g:claude_model')
-  let g:claude_model = 'claude-sonnet-4-20250514'
+  let g:claude_model = 'claude-sonnet-4-6'
 endif
 
 if !exists('g:claude_use_bedrock')
@@ -23,7 +23,7 @@ if !exists('g:claude_bedrock_region')
 endif
 
 if !exists('g:claude_bedrock_model_id')
-  let g:claude_bedrock_model_id = 'us.anthropic.claude-sonnet-4-20250514-v1:0'
+  let g:claude_bedrock_model_id = 'us.anthropic.claude-sonnet-4-6-20251001-v1:0'
 endif
 	
 if !exists('g:claude_aws_profile')
