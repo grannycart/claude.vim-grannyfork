@@ -216,6 +216,8 @@ function! s:HandleStreamOutput(stream_callback, final_callback, channel, msg)
         if exists('s:current_thinking_block')
           let s:current_thinking_block .= l:response.delta.thinking
         endif
+      elseif l:response.type == 'content_block_delta' && has_key(l:response.delta, 'type') && l:response.delta.type == 'signature_delta'
+        " ignore: cryptographic signature for thinking block verification
       elseif l:response.type == 'content_block_stop'
         if exists('s:current_tool_call')
           let l:tool_input = json_decode(s:current_tool_call.input)
@@ -991,6 +993,7 @@ function! s:AppendThinkingBlock(content)
   call append('$', l:indent . '```thinking')
   call append('$', map(split(a:content, "\n"), {_, v -> l:indent . v}))
   call append('$', l:indent . '```')
+  call append('$', l:indent)
   normal! G
 endfunction
 
