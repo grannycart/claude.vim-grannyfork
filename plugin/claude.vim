@@ -30,6 +30,10 @@ if !exists('g:claude_aws_profile')
   let g:claude_aws_profile = ''
 endif
 
+if !exists('g:claude_thinking_budget')
+  let g:claude_thinking_budget = 0
+endif
+
 if !exists('g:claude_map_implement')
   let g:claude_map_implement = '<leader>ci'
 endif
@@ -268,7 +272,7 @@ function! s:ApplyChange(normal_command, content)
   set paste
 
   let l:normal_command = substitute(a:normal_command, '<CR>', "\<CR>", 'g')
-  execute 'normal ' . l:normal_command . "\<C-r>=a:content\<CR>"
+  execute 'normal ' . l:normal_command . "\<C-r>=a:content\<CR>\<Esc>"
 
   let &paste = l:paste_option
   call winrestview(l:view)
