@@ -553,21 +553,24 @@ function! s:ExecuteOpenWebTool(url)
 
   topleft 1new
   setlocal buftype=nofile
-  setlocal bufhidden=hide
+  setlocal bufhidden=wipe
   setlocal noswapfile
 
   execute ':r !elinks -dump ' . escape(shellescape(a:url), '%#!')
   if v:shell_error
-    close
+    bwipeout!
     call win_gotoid(l:current_winid)
     return 'ERROR: Failed to fetch content from ' . a:url . ': ' . v:shell_error
   endif
 
-  let l:bufname = fnameescape(a:url)
-  execute 'file ' . l:bufname
-
+  let l:content = join(getline(2, '$'), "\n")
+  bwipeout!
   call win_gotoid(l:current_winid)
-  return l:bufname
+  if len(l:content) > 10000
+    let l:content = l:content[:9999] . "\n[content truncated]"
+  endif
+  let l:content = substitute(l:content, '```', '` ` `', 'g')
+  return l:content
 endfunction
 
 
