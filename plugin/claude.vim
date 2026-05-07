@@ -144,9 +144,6 @@ function! s:ClaudeQueryInternal(messages, system_prompt, tools, stream_callback,
     endif
     call extend(l:headers, ['-H', 'Content-Type: application/json'])
     call extend(l:headers, ['-H', 'x-api-key: ' . g:claude_api_key])
-    if g:claude_thinking_budget > 0
-      call extend(l:headers, ['-H', 'anthropic-beta: interleaved-thinking-2025-05-14'])
-    endif
     call extend(l:headers, ['-H', 'anthropic-version: 2023-06-01'])
 
     " Convert data to JSON
@@ -718,22 +715,19 @@ endfunction
 
 function! GetChatFold(lnum)
   let l:line = getline(a:lnum)
-  let l:prev_level = foldlevel(a:lnum - 1)
 
   if l:line =~ '^You:' || l:line =~ '^System prompt:'
-    return '>1'  " Start a new fold at level 1
+    return '>1'
   elseif l:line =~ '^\s' || l:line =~ '^$' || l:line =~ '^.*:'
-    if l:line =~ '^\s*```'
-      if l:prev_level == 1
-        return '>2'  " Start a new fold at level 2 for code blocks
-      else
-        return '<2'  " End the fold for code blocks
-      endif
+    if l:line =~ '^\s*```\S'
+      return '>2'
+    elseif l:line =~ '^\s*```\s*$'
+      return '<2'
     else
-      return '='   " Use the fold level of the previous line
-    fi
+      return '='
+    endif
   else
-    return '0'  " Terminate the fold
+    return '0'
   endif
 endfunction
 
@@ -1014,6 +1008,35 @@ function! s:AppendThinkingBlock(content)
   normal! G
 endfunction
 
+function! s:ConvertInlineThinkingBlocks()
+  if bufname('%') !~# 'Claude Chat'
+    return
+  endif
+  let l:indent = s:GetClaudeIndent()
+  normal! G
+  let l:start_line = search('^Claude:', 'b')
+  if l:start_line == 0
+    return
+  endif
+  let l:end_line = line('$')
+  let l:line_num = l:start_line
+  while l:line_num <= l:end_line
+    if getline(l:line_num) =~# '^\s*<thinking>\s*$'
+      call setline(l:line_num, l:indent . '```thinking')
+      let l:close_num = l:line_num + 1
+      while l:close_num <= l:end_line
+        if getline(l:close_num) =~# '^\s*</thinking>\s*$'
+          call setline(l:close_num, l:indent . '```')
+          let l:line_num = l:close_num
+          break
+        endif
+        let l:close_num += 1
+      endwhile
+    endif
+    let l:line_num += 1
+  endwhile
+endfunction
+
 function! s:ResponseExtractToolUses(messages)
   if len(a:messages) == 0
     return []
@@ -1218,6 +1241,7 @@ function! s:FinalChatResponse()
   if !empty(l:tool_uses)
     call s:SendChatMessage('Claude...:')
   else
+    call s:ConvertInlineThinkingBlocks()
     call s:ClosePreviousFold()
     call s:CloseCurrentInteractionCodeBlocks()
     call s:PrepareNextInput()
@@ -1235,6 +1259,7 @@ function! s:CancelClaudeResponse()
     endif
     unlet s:current_chat_job
     call s:AppendResponse("[Response cancelled by user]")
+    call s:ConvertInlineThinkingBlocks()
     call s:ClosePreviousFold()
     call s:CloseCurrentInteractionCodeBlocks()
     call s:PrepareNextInput()
