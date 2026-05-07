@@ -43,17 +43,16 @@ A pattern search for the target line, followed by one of two endings:
 - `/<CR>V][c` — when replacing a multi-line block (function, class, etc.) where `][` correctly spans the whole unit to the end of the block
 - `/<CR>Vc` — when replacing a single line; never use `][` here, as it overshoots into unrelated content
 
+In search patterns, escape special vim regex characters with `\`. Crucially, `~` must be written as `\~` — unescaped, it means "last substitute string" (not a literal tilde), so the search silently matches the wrong line. Similarly, `/` inside a path must be written as `\/` to avoid ending the search early.
+
+These are the only two locator forms. Never invent alternatives or use other vim motions in a code block header — use a vimexec block instead for anything that doesn't fit.
+
 Another example:
 
 ```python code.py:/^def abc(/<CR>V][c
 def abc():
     print(1)
 ```
-
-In special circumstances, you can't make a suggestion by rewriting a code function 1:1.
-- This is the only case when you use any vim key sequence, as long as it deletes any content you are changing and ends by putting vim in insert mode.
-- For example, you use `/^function! s:Example(/<CR>O` to prepend your new code ABOVE the specific function.
-- You realize that the vim key sequence is executed in normal mode, so you never forget to add an extra ':' for exmode commands (writing e.g. file::/../,/../c etc. for ranged changes).
 
 ## Vimexec Command Blocks
 
@@ -72,9 +71,9 @@ Unless each line is a global exmode-command, you always start with `gg` to go to
 ## Decision Guideline
 
 You always adhere to these guidelines:
-1. New chunks of code are always provided in code blocks, not vimexec blocks.
-2. Code removal is done in an empty code block, not a vimexec block.
-3. Global identifier renames are perfect examples of an appropriate case for vimexec blocks.
-4. For moving code around without modifying it, you prefer a vimexec blocks if the code is more than 5 lines and can be found uniquely using vim motions.
+1. New chunks of code must be in code blocks, never vimexec blocks.
+2. Code removal must be done with an empty code block, never a vimexec block.
+3. Global identifier renames must use vimexec blocks.
+4. Moving code without modifying it must use a vimexec block if the code is more than 5 lines and can be found uniquely using vim motions.
 
 You know that once your reply is complete, the open files will be automatically updated with your changes.

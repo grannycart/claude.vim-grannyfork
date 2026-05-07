@@ -4,9 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Fork Status
 
-This is a fork of the unmaintained upstream repo `pasky/claude.vim`. **All planned work is complete.** The original plan is at `~/.claude/plans/binary-mixing-fairy.md` for reference, but is fully implemented — do not treat it as pending work.
+This is a fork of the unmaintained upstream repo `pasky/claude.vim`. **All planned work is complete.** Do not treat any earlier plan documents as pending work.
 
 The owner's design philosophy: Claude should only access what the user explicitly provides; all code changes must go through vimdiff review; Claude should never write directly to the filesystem. When in doubt, ask before acting.
+
+**Prompt-side vs parser-side robustness**: This plugin parses Claude's own output — a non-deterministic source. The right strategy is to constrain Claude's output format via the system prompt so the parser has almost nothing to do, rather than writing a clever parser that tries to handle variance. Every ambiguity in the prompt is a potential new class of silent failure. Changes to `plugin/claude_system_prompt.md` should tighten format rules, not loosen them.
 
 ## What was changed from upstream
 
@@ -17,6 +19,12 @@ All changes are in `plugin/claude.vim` unless noted.
 **Vimdiff multi-hunk fix** (`s:ApplyChange`, ~line 275): Added `\<Esc>` at the end of the `execute 'normal ...'` command so Vim returns to normal mode between applying multiple code changes. Without this, the second and later changes silently failed — `c` opens insert mode, and the next hunk's `execute 'normal ...'` fired while still in insert mode, so the command was typed as literal text instead of executed. This is a *mode* bug; see also the overshoot bug below.
 
 **System prompt: `Vc` vs `V][c` for code change locators** (`plugin/claude_system_prompt.md`): The upstream prompt instructed Claude to always use `/<CR>V][c` as the locator suffix. `][` is a Vim motion that jumps to the end of the next section/function, which works correctly when replacing a whole multi-line block but overshoots badly for single-line targets — it selects too much, corrupting the replacement or deleting the target lines for subsequent hunks. Fixed by specifying two cases in the prompt: `/<CR>V][c` for multi-line blocks, `/<CR>Vc` for single-line replacements. Both bugs (mode and overshoot) produce similar symptoms — later hunks not applying — but through completely different mechanisms.
+
+**Locator format validation** (`s:ProcessCodeBlock`, ~line 1099): When a code block has a locator (non-empty `l:normal_command`), it is now validated against the two allowed forms before being queued for execution. Any locator that does not end with `<CR>V][c` (multi-line) or `<CR>Vc` (single-line) triggers a visible `WarningMsg` and is skipped entirely rather than executing unknown keystrokes on the buffer. The `Go<CR>` default (no locator) is exempt. This catches cases where Claude deviates from the format specified in the system prompt, turning silent wrong-buffer edits into a visible, skippable failure.
+
+**System prompt: format constraints tightened** (`plugin/claude_system_prompt.md`): The upstream prompt contained an escape hatch ("in special circumstances, use any vim key sequence as long as it ends in insert mode") that allowed Claude to invent arbitrary locator forms. This was removed — any case that doesn't fit 1:1 replacement must now use a vimexec block instead. The Decision Guideline section was also hardened from suggestive language ("you prefer", "perfect examples") to absolute rules ("must"). Rationale: this plugin parses Claude's own non-deterministic output; every ambiguity in the prompt is a potential class of silent parser failure, so prompt changes should always tighten constraints, not loosen them.
+
+**System prompt: regex escaping in search patterns** (`plugin/claude_system_prompt.md`): Claude was not escaping `~` in search patterns. In Vim regex, `~` means "last substitute string" — not a literal tilde — so any pattern containing `~/` (home directory paths) silently matched the wrong line, causing the change to land at the wrong location or at the top of the buffer. Also: `/` within a path must be escaped as `\/` to avoid prematurely ending the search. Fixed by adding an explicit escaping note to the prompt.
 
 **`g:claude_restrict_filesystem`** (default 1): Config var added near top of file. In `s:SendChatMessage`, `g:claude_tools` is filtered to remove `open`/`new`/`shell`/`python` before each API call when set. `open_web` and `web_search` are unaffected. Set to 0 in `.vimrc` to re-enable filesystem tools for a project.
 

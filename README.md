@@ -1,5 +1,7 @@
 # Claude for AI Pair Programming in Vim / Neovim: Or, a Hacker's Gateway to LLMs
 
+This repo is a fork of [claude.vim](https://github.com/pasky/claude.vim), updated to work with current models and with an eye toward more restrictions in what the AI can do and simpler, more transparent usage. Sure, this might be regressive compared to the modern thinking about AI development, but sometimes that's exactly what you want. Or at least what I want.
+
 This vim plugin integrates Claude deeply into your Vim workflow - rather than
 working in the clunky web Claude Chat, actually chat about and hack together
 on your currently opened vim buffers.
@@ -18,54 +20,9 @@ This plugin is NOT:
   And it is going to need feedback and change review in order to be helpful.
   This is why the access to chat history and the vimdiff interface are the killer features.
 
-![Chat buffer at the bottom, vimdiff at the top.](https://pbs.twimg.com/media/GSjaG6qXMAAw5fm?format=jpg&name=4096x4096)
+For more information on how the original plugin worked, see the [claude.vim README](https://github.com/pasky/claude.vim).
 
-This plugin will give you a partner who will one-shot new features in your codebase:
-
-https://github.com/pasky/claude.vim/assets/18439/73ffcaac-d5b4-4508-b9fa-077c189d2c93
-
-You can let it refactor your code if it's a bit messy, and have an ongoing discussion about it:
-
-https://github.com/pasky/claude.vim/assets/18439/625060ca-600f-4774-adbe-ec93f94a30e9
-
-You can ask it to modify or extend just a selected piece of your code:
-
-https://github.com/pasky/claude.vim/assets/18439/71544b57-e87d-4dd4-a7e6-4051fa080d18
-
-It can use Claude Tools interface - it will open files and execute vim commands as needed.
-
-![Claude realizes it needs to open another file, opens it, and then executes a series of vim commands to uppercase its first line.](https://pbs.twimg.com/media/GSjaXLnW8AEuFE_?format=jpg&name=4096x4096)
-
-It can also (with your case-by-case consent) evaluate Python expression when figuring
-out what you asked:
-
-![When asked for refactoring suggestions, Claude evaluates short Python snippets to get basic source code stats, and even autonomously iterates the Python execution when one of the snippets fails.](https://pbs.twimg.com/media/GSXpOY2WsAI6aFt?format=jpg&name=4096x4096)
-
-And it can execute complex tasks by first reading documentation, then cloning git respositories, browsing the directory tree, etc.
-
-![Based on a short sentence, Claude reads documentation for another software project, clones the repo, installs dependencies etc.](https://pbs.twimg.com/media/GSjasfZXoAAvtKs?format=jpg&name=4096x4096)
-
-Actually, the current version can execute also shell script. And it can help you also with sysadmin tasks, not just coding.
-
-![Claude is asked to diagnose a RAID1 after disk replacement, so it just runs the appropriate commands using the shell tool.](https://pbs.twimg.com/media/GTc9x4nWoAAZK0M?format=jpg&name=4096x4096)
-
-And ultimately, Claude.vim can act as pretty much a full text terminal replacement of Claude.ai or ChatGPT. And it will search the web if it doesn't know something.
-
-![Claude is asked for a simple medical advice. It searches the web for the germ, then summarizes the results.](https://pbs.twimg.com/media/GTWwKLPWIAAEPub?format=jpg&name=medium)
-
-----
-
-Sonnet 3.5 is not yet good enough to completely autonomously perform complex tasks.
-This is why you can chat with it, review and reject its changes and tool execution attempts, etc.
-You still do the "hard thinking" and decide and tell it *what* to do.
-
-That said, about 95% of the code of this plugin has been written by Claude
-Sonnet 3.5, and most of the time already "self-hosted" within the plugin.
-
-**NOTE: This is early alpha software.**  It is expected to rapidly evolve...
-and not just in backwards compatible way.  Stay in touch with the maintainer
-if you are using it (`pasky` on libera IRC, or @xpasky on Twitter / X, or just
-via github issues or PRs).
+More information about the specifics of this fork in the "Changes in this fork" section below.
 
 ## Installation
 
@@ -74,23 +31,20 @@ First, install using your favourite package manager, or use Vim's built-in packa
 Vim:
 
 ```
-mkdir -p ~/.vim/pack/pasky/start
-cd ~/.vim/pack/pasky/start
-git clone https://github.com/pasky/claude.vim.git
+mkdir -p ~/.vim/pack/plugins/start
+cd ~/.vim/pack/plugins/start
+git clone https://github.com/grannycart/claude.vim-grannyfork.git
 ```
 
 Neovim:
 
 ```
-mkdir -p ~/.config/nvim/pack/pasky/start
-cd ~/.config/nvim/pack/pasky/start
-git clone https://github.com/pasky/claude.vim.git
+mkdir -p ~/.config/nvim/pack/plugins/start
+cd ~/.config/nvim/pack/plugins/start
+git clone https://github.com/grannycart/claude.vim-grannyfork.git
 ```
 
-To allow web access, install elinks or felinks (e.g. `brew install felinks`).
-To allow Google access, you first need to open elinks manually, navigate to
-`https://www.google.com/search?q=lala` and select and press one of the buttons
-in the cookie consent (then, quit it using `q`).
+To allow web search, install elinks or felinks (e.g. `brew install felinks`).
 
 ## Configuration
 
@@ -176,12 +130,15 @@ be a tad bit verbose), but the chat history is also visible to Claude when
 asking it something.  However, you can simply edit the buffer to arbitrarily
 redact the history (or just delete it).
 
+**NOTE: Vimdiff is not guaranteed.** Claude generates code changes in a specific internal format that the plugin parses to produce the vimdiff view. Because Claude's output is not fully deterministic, it will occasionally produce changes in an unexpected format that the parser cannot handle — resulting in no diff, a partial diff, or a warning message. If vimdiff doesn't appear when you expected it to, try asking Claude to make the same change again, or rephrase your request. Claude usually gets it right on a second attempt.
+
 **NOTE: For every single Claude Q&A roundtrip, full chat history and full
 content of all buffers is sent.  This can consume tokens FAST.  (Even if it
 is not too expensive, remember that Claude also imposes a total daily token
 limit.) Prune your chat history regularly.**
 
 --------------------------------------------------------------------------------
+
 ## Changes in this fork
 
 _Why this fork? Don't we all use Claude Code now?_ While not denying the power of Claude Code CLI, on experimenting with it I found it extremely aggravating:
@@ -241,14 +198,14 @@ The budget controls the maximum number of tokens Claude may spend on internal re
 
 Web search now uses DuckDuckGo Lite instead of Google. Google blocks elinks (the text browser used for web access). DuckDuckGo Lite is plain HTML — no JavaScript, no consent walls.
 
-The search URL is set in `s:ExecuteTool` in `plugin/claude.vim`. To switch back to Google (e.g. after manually accepting cookie consent in elinks):
+The search URL is set in `s:ExecuteTool` in `plugin/claude.vim`. To switch back to Google (and then remember you need to manually accept cookie consent in elinks), find this line and change the URL:
 
-```vim
-" In plugin/claude.vim, find this line and change the URL:
-return s:ExecuteOpenWebTool("https://lite.duckduckgo.com/lite/?q=" . l:escaped_query)
-" Replace with:
-return s:ExecuteOpenWebTool("https://www.google.com/search?q=" . l:escaped_query)
-```
+From:  
+`return s:ExecuteOpenWebTool("https://lite.duckduckgo.com/lite/?q=" . l:escaped_query)`
+Replace with:  
+`return s:ExecuteOpenWebTool("https://www.google.com/search?q=" . l:escaped_query)`
+
+(This should probably be made an option in .vimrc at some point.)
 
 All web fetches (both `web_search` and direct `open_web` tool calls) now require per-request confirmation. You will be shown the URL and asked to confirm before anything is fetched. This protects against prompt injection attacks where a malicious page could instruct Claude to silently exfiltrate your open buffer contents via a crafted URL.
 

@@ -788,7 +788,7 @@ function! s:OpenClaudeChat()
 
     call setline(1, ['System prompt: ' . g:claude_default_system_prompt[0]])
     call append('$', map(g:claude_default_system_prompt[1:], {_, v -> "\t" . v}))
-    call append('$', ['Type your messages below, press C-] to send.  (Content of all buffers is shared alongside!)', '', 'You: '])
+    call append('$', ['Type your messages below, press C-] in normal mode to send.  (Content of all buffers is shared alongside!)', '', 'You: '])
 
     " Fold the system prompt
     normal! 1Gzc
@@ -1105,6 +1105,12 @@ function! s:ProcessCodeBlock(block, all_changes)
     if empty(l:normal_command)
       " By default, append to the end of file
       let l:normal_command = 'Go<CR>'
+    elseif l:normal_command !~ '<CR>V\]\[c$\|<CR>Vc$'
+      echohl WarningMsg
+      echomsg "Warning: Unexpected locator format in code block for " . l:buffername . ": " . l:normal_command
+      echomsg "Expected locator ending in /<CR>V][c (multi-line) or /<CR>Vc (single-line). Skipping."
+      echohl None
+      return
     endif
 
     call add(a:all_changes[l:target_bufnr], {
