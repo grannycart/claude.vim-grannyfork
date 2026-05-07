@@ -39,7 +39,9 @@ endfunction
 ```
 
 Therefore, the first line is "vim buffername:locator" where the locator is a vim command following a fixed template:
-A pattern search for the function definition line, and it is ALWAYS followed with precisely `/<CR>V][c`.
+A pattern search for the target line, followed by one of two endings:
+- `/<CR>V][c` — when replacing a multi-line block (function, class, etc.) where `][` correctly spans the whole unit to the end of the block
+- `/<CR>Vc` — when replacing a single line; never use `][` here, as it overshoots into unrelated content
 
 Another example:
 

@@ -14,7 +14,9 @@ All changes are in `plugin/claude.vim` unless noted.
 
 **Model IDs** (lines ~14, ~27): Updated defaults from old date-suffixed IDs to `claude-sonnet-4-6` / `us.anthropic.claude-sonnet-4-6-20251001-v1:0`.
 
-**Vimdiff multi-hunk fix** (`s:ApplyChange`, ~line 275): Added `\<Esc>` at the end of the `execute 'normal ...'` command so Vim returns to normal mode between applying multiple code changes. Without this, the second and later changes silently failed when they were multi-line.
+**Vimdiff multi-hunk fix** (`s:ApplyChange`, ~line 275): Added `\<Esc>` at the end of the `execute 'normal ...'` command so Vim returns to normal mode between applying multiple code changes. Without this, the second and later changes silently failed — `c` opens insert mode, and the next hunk's `execute 'normal ...'` fired while still in insert mode, so the command was typed as literal text instead of executed. This is a *mode* bug; see also the overshoot bug below.
+
+**System prompt: `Vc` vs `V][c` for code change locators** (`plugin/claude_system_prompt.md`): The upstream prompt instructed Claude to always use `/<CR>V][c` as the locator suffix. `][` is a Vim motion that jumps to the end of the next section/function, which works correctly when replacing a whole multi-line block but overshoots badly for single-line targets — it selects too much, corrupting the replacement or deleting the target lines for subsequent hunks. Fixed by specifying two cases in the prompt: `/<CR>V][c` for multi-line blocks, `/<CR>Vc` for single-line replacements. Both bugs (mode and overshoot) produce similar symptoms — later hunks not applying — but through completely different mechanisms.
 
 **`g:claude_restrict_filesystem`** (default 1): Config var added near top of file. In `s:SendChatMessage`, `g:claude_tools` is filtered to remove `open`/`new`/`shell`/`python` before each API call when set. `open_web` and `web_search` are unaffected. Set to 0 in `.vimrc` to re-enable filesystem tools for a project.
 
@@ -68,7 +70,7 @@ Supporting files:
 
 **Vim/Neovim compat**: `has('nvim')` guards throughout; async jobs use `jobstart`/`job_start` and their respective callback APIs. `s:HandleStreamOutputNvim` wraps `s:HandleStreamOutput` for Neovim — changes to the parser only need to go in the main function.
 
-**Code change formats**: Claude produces edits using vim buffer locators (`/pattern/<CR>V][c`) for simple replacements, or `vimexec` blocks for multi-step command sequences. `s:ApplyCodeChangesDiff` interprets both.
+**Code change formats**: Claude produces edits using vim buffer locators for simple replacements, or `vimexec` blocks for multi-step command sequences. `s:ApplyCodeChangesDiff` interprets both. Locator suffix is `/<CR>V][c` for multi-line blocks (where `][` correctly spans the whole unit) or `/<CR>Vc` for single-line replacements (where `][` would overshoot). The system prompt specifies this distinction explicitly.
 
 **Token cost tracking**: input costs $3/1M tokens, output $15/1M tokens; displayed after each response.
 
