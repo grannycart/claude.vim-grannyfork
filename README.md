@@ -1,5 +1,7 @@
 # Claude for AI Pair Programming in Vim / Neovim: Or, a Hacker's Gateway to LLMs
 
+**NOTE: After many many iterations of trying to make this work the way I want it to with Claude Code, I have not been able to work out the bugs. There just doesn't seem to be a way to convince Claude to generate consistent and functional vimdiffs.**
+
 This repo is a fork of [claude.vim](https://github.com/pasky/claude.vim), updated to work with current models and with an eye toward more restrictions in what the AI can do and simpler, more transparent usage. Sure, this might be regressive compared to the modern thinking about AI development, but sometimes that's exactly what you want. Or at least what I want.
 
 This vim plugin integrates Claude deeply into your Vim workflow - rather than
